@@ -38,3 +38,12 @@ def login(credentials: schemas.LoginRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=schemas.UserOut)
 def read_me(current_user=Depends(security.get_current_user)):
     return current_user
+
+
+@router.patch("/me/wage", response_model=schemas.UserOut)
+def update_my_wage(
+    data: schemas.UserUpdateWage,
+    db: Session = Depends(get_db),
+    current_user=Depends(security.get_current_user),
+):
+    return crud.update_user_wage(db, current_user, data.hourly_wage, data.overtime_hourly_wage)

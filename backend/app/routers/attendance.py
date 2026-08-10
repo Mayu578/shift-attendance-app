@@ -23,7 +23,7 @@ def create_attendance(
 ):
     record = crud.create_attendance(db, current_user.id, data)
     all_records = crud.list_attendances_for_user_around(db, current_user.id)
-    out_list = crud.build_attendance_out_list(all_records, current_user.standard_work_minutes)
+    out_list = crud.build_attendance_out_list(all_records, current_user.hourly_wage, current_user.overtime_hourly_wage)
     return next(r for r in out_list if r.id == record.id)
 
 
@@ -36,7 +36,7 @@ def list_my_attendance(
 ):
     # インターバル計算のため月をまたいで直近レコードも含めて計算し、対象月だけ返す
     all_records = crud.list_attendances_for_user_around(db, current_user.id)
-    out_list = crud.build_attendance_out_list(all_records, current_user.standard_work_minutes)
+    out_list = crud.build_attendance_out_list(all_records, current_user.hourly_wage, current_user.overtime_hourly_wage)
     month_records = [r for r in out_list if r.work_date.year == year and r.work_date.month == month]
     summary = crud.build_monthly_summary(year, month, out_list)
     return schemas.AttendanceListResponse(records=month_records, summary=summary)
@@ -57,7 +57,7 @@ def update_attendance(
     updated = crud.update_attendance(db, record, data)
     owner = crud.get_user(db, updated.user_id)
     all_records = crud.list_attendances_for_user_around(db, updated.user_id)
-    out_list = crud.build_attendance_out_list(all_records, owner.standard_work_minutes)
+    out_list = crud.build_attendance_out_list(all_records, owner.hourly_wage, owner.overtime_hourly_wage)
     return next(r for r in out_list if r.id == updated.id)
 
 
@@ -88,7 +88,7 @@ def list_all_attendance(
     result = {}
     for user in users:
         all_records = crud.list_attendances_for_user_around(db, user.id)
-        out_list = crud.build_attendance_out_list(all_records, user.standard_work_minutes)
+        out_list = crud.build_attendance_out_list(all_records, user.hourly_wage, user.overtime_hourly_wage)
         month_records = [r for r in out_list if r.work_date.year == year and r.work_date.month == month]
         summary = crud.build_monthly_summary(year, month, out_list)
         result[user.id] = schemas.AttendanceListResponse(records=month_records, summary=summary)

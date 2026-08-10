@@ -25,6 +25,8 @@ export interface User {
   role: UserRole;
   is_active: boolean;
   standard_work_minutes: number;
+  hourly_wage: number;
+  overtime_hourly_wage: number;
   created_at: string;
 }
 
@@ -32,21 +34,27 @@ export interface AttendanceRecord {
   id: number;
   user_id: number;
   work_date: string;
+  scheduled_start: string | null;
+  scheduled_end: string | null;
   clock_in: string;
   clock_out: string | null;
   break_minutes: number;
   note: string | null;
   worked_minutes: number | null;
+  scheduled_minutes: number | null;
   overtime_minutes: number | null;
   interval_minutes_before: number | null;
   interval_warning: boolean | null;
+  earnings: number | null;
 }
 
 export interface MonthlySummary {
   year: number;
   month: number;
   total_worked_minutes: number;
+  total_scheduled_minutes: number;
   total_overtime_minutes: number;
+  total_earnings: number;
   record_count: number;
   min_interval_minutes: number | null;
   interval_warning_count: number;

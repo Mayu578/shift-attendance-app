@@ -52,6 +52,14 @@ def update_user_active(db: Session, user: models.User, is_active: bool) -> model
     return user
 
 
+def update_user_wage(db: Session, user: models.User, hourly_wage: int, overtime_hourly_wage: int) -> models.User:
+    user.hourly_wage = hourly_wage
+    user.overtime_hourly_wage = overtime_hourly_wage
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 def delete_user(db: Session, user: models.User) -> None:
     db.delete(user)
     db.commit()
@@ -120,15 +128,41 @@ def list_all_attendances(
 
 def compute_record_metrics(
     record: models.Attendance,
-    standard_work_minutes: int,
+    hourly_wage: int,
+    overtime_hourly_wage: int,
     previous_clock_out: Optional[datetime],
 ) -> dict:
     worked_minutes = None
     overtime_minutes = None
+    scheduled_minutes = None
+    earnings = None
+
     if record.clock_out is not None:
         total_minutes = int((record.clock_out - record.clock_in).total_seconds() // 60)
         worked_minutes = max(0, total_minutes - (record.break_minutes or 0))
-        overtime_minutes = max(0, worked_minutes - standard_work_minutes)
+
+        if record.scheduled_start is not None and record.scheduled_end is not None:
+            # 予定シフトの長さ(参考表示用)
+            scheduled_minutes = int(
+                (record.scheduled_end - record.scheduled_start).total_seconds() // 60
+            )
+            # 残業 = 予定より早く出勤した分 + 予定より遅く退勤した分
+            # (予定と実績の「合計時間の差」ではなく、実際に時刻がはみ出した分そのもの)
+            early_minutes = max(
+                0, int((record.scheduled_start - record.clock_in).total_seconds() // 60)
+            )
+            late_minutes = max(
+                0, int((record.clock_out - record.scheduled_end).total_seconds() // 60)
+            )
+            overtime_minutes = early_minutes + late_minutes
+        else:
+            # 予定シフトが未入力の場合は残業を計算できない(0として扱わず、実働のみ表示)
+            overtime_minutes = None
+
+        regular_minutes = max(0, worked_minutes - (overtime_minutes or 0))
+        earnings = round(
+            regular_minutes / 60 * hourly_wage + (overtime_minutes or 0) / 60 * overtime_hourly_wage
+        )
 
     interval_minutes_before = None
     interval_warning = None
@@ -140,24 +174,28 @@ def compute_record_metrics(
 
     return {
         "worked_minutes": worked_minutes,
+        "scheduled_minutes": scheduled_minutes,
         "overtime_minutes": overtime_minutes,
         "interval_minutes_before": interval_minutes_before,
         "interval_warning": interval_warning,
+        "earnings": earnings,
     }
 
 
 def build_attendance_out_list(
-    records: List[models.Attendance], standard_work_minutes: int
+    records: List[models.Attendance], hourly_wage: int, overtime_hourly_wage: int
 ) -> List[schemas.AttendanceOut]:
     """日付順に並んだレコード群から、各レコードのインターバル等を計算してOutスキーマに変換"""
     results = []
     previous_clock_out: Optional[datetime] = None
     for record in records:
-        metrics = compute_record_metrics(record, standard_work_minutes, previous_clock_out)
+        metrics = compute_record_metrics(record, hourly_wage, overtime_hourly_wage, previous_clock_out)
         out = schemas.AttendanceOut(
             id=record.id,
             user_id=record.user_id,
             work_date=record.work_date,
+            scheduled_start=record.scheduled_start,
+            scheduled_end=record.scheduled_end,
             clock_in=record.clock_in,
             clock_out=record.clock_out,
             break_minutes=record.break_minutes or 0,
@@ -175,14 +213,18 @@ def build_monthly_summary(
 ) -> schemas.MonthlySummary:
     month_records = [r for r in records_out if r.work_date.year == year and r.work_date.month == month]
     total_worked = sum(r.worked_minutes or 0 for r in month_records)
+    total_scheduled = sum(r.scheduled_minutes or 0 for r in month_records)
     total_overtime = sum(r.overtime_minutes or 0 for r in month_records)
+    total_earnings = sum(r.earnings or 0 for r in month_records)
     intervals = [r.interval_minutes_before for r in month_records if r.interval_minutes_before is not None]
     warning_count = sum(1 for r in month_records if r.interval_warning)
     return schemas.MonthlySummary(
         year=year,
         month=month,
         total_worked_minutes=total_worked,
+        total_scheduled_minutes=total_scheduled,
         total_overtime_minutes=total_overtime,
+        total_earnings=total_earnings,
         record_count=len(month_records),
         min_interval_minutes=min(intervals) if intervals else None,
         interval_warning_count=warning_count,

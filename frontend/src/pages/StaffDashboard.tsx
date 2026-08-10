@@ -4,6 +4,7 @@ import MonthNav from "../components/MonthNav";
 import SummaryCards from "../components/SummaryCards";
 import AttendanceBoard from "../components/AttendanceBoard";
 import AttendanceForm, { AttendanceFormValues } from "../components/AttendanceForm";
+import WageSettings from "../components/WageSettings";
 import { api, AttendanceListResponse, AttendanceRecord } from "../api";
 
 const now = new Date();
@@ -14,6 +15,7 @@ export default function StaffDashboard() {
   const [data, setData] = useState<AttendanceListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<AttendanceRecord | null>(null);
+  const [showWageSettings, setShowWageSettings] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -31,6 +33,8 @@ export default function StaffDashboard() {
   async function handleSubmit(values: AttendanceFormValues) {
     const payload = {
       work_date: values.work_date,
+      scheduled_start: values.scheduled_start || null,
+      scheduled_end: values.scheduled_end || null,
       clock_in: values.clock_in,
       clock_out: values.clock_out || null,
       break_minutes: values.break_minutes,
@@ -60,6 +64,16 @@ export default function StaffDashboard() {
           出勤・退勤を記録すると、残業時間と次のシフトまでのインターバルを自動で計算します。
         </p>
       </div>
+
+      <button
+        className="btn btn-secondary"
+        style={{ marginBottom: 16 }}
+        onClick={() => setShowWageSettings((v) => !v)}
+      >
+        {showWageSettings ? "時給設定を閉じる" : "時給を設定する"}
+      </button>
+
+      {showWageSettings && <WageSettings />}
 
       <AttendanceForm
         editing={editing}

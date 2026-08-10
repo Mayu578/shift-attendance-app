@@ -22,6 +22,8 @@ class UserOut(BaseModel):
     role: UserRole
     is_active: bool
     standard_work_minutes: int
+    hourly_wage: int
+    overtime_hourly_wage: int
     created_at: datetime
 
 
@@ -31,6 +33,11 @@ class UserUpdateRole(BaseModel):
 
 class UserUpdateActive(BaseModel):
     is_active: bool
+
+
+class UserUpdateWage(BaseModel):
+    hourly_wage: int
+    overtime_hourly_wage: int
 
 
 # ---------- Auth ----------
@@ -50,6 +57,8 @@ class LoginRequest(BaseModel):
 
 class AttendanceCreate(BaseModel):
     work_date: date
+    scheduled_start: Optional[datetime] = None
+    scheduled_end: Optional[datetime] = None
     clock_in: datetime
     clock_out: Optional[datetime] = None
     break_minutes: int = 0
@@ -58,6 +67,8 @@ class AttendanceCreate(BaseModel):
 
 class AttendanceUpdate(BaseModel):
     work_date: Optional[date] = None
+    scheduled_start: Optional[datetime] = None
+    scheduled_end: Optional[datetime] = None
     clock_in: Optional[datetime] = None
     clock_out: Optional[datetime] = None
     break_minutes: Optional[int] = None
@@ -70,6 +81,8 @@ class AttendanceOut(BaseModel):
     id: int
     user_id: int
     work_date: date
+    scheduled_start: Optional[datetime]
+    scheduled_end: Optional[datetime]
     clock_in: datetime
     clock_out: Optional[datetime]
     break_minutes: int
@@ -77,16 +90,20 @@ class AttendanceOut(BaseModel):
 
     # 計算値
     worked_minutes: Optional[int] = None
-    overtime_minutes: Optional[int] = None
+    scheduled_minutes: Optional[int] = None  # その日の予定シフトの長さ
+    overtime_minutes: Optional[int] = None   # 実働 - 予定シフト（マイナスにはしない）
     interval_minutes_before: Optional[int] = None  # 前回退勤からのインターバル
     interval_warning: Optional[bool] = None  # インターバルが基準未満か
+    earnings: Optional[int] = None  # その日の稼いだ金額(円)
 
 
 class MonthlySummary(BaseModel):
     year: int
     month: int
     total_worked_minutes: int
+    total_scheduled_minutes: int
     total_overtime_minutes: int
+    total_earnings: int
     record_count: int
     min_interval_minutes: Optional[int] = None
     interval_warning_count: int = 0

@@ -1,10 +1,17 @@
 import React from "react";
 import { MonthlySummary } from "../api";
-import { formatMinutesAsHM } from "../utils";
+import { formatCurrency, formatMinutesAsHM } from "../utils";
 
 export default function SummaryCards({ summary }: { summary: MonthlySummary }) {
   return (
     <div className="summary-grid">
+      <div className="summary-card">
+        <div className="summary-label">月間予定シフト</div>
+        <div className="summary-value">
+          {formatMinutesAsHM(summary.total_scheduled_minutes)}
+          <span className="summary-unit">h</span>
+        </div>
+      </div>
       <div className="summary-card">
         <div className="summary-label">月間総勤務時間</div>
         <div className="summary-value">
@@ -18,6 +25,10 @@ export default function SummaryCards({ summary }: { summary: MonthlySummary }) {
           {formatMinutesAsHM(summary.total_overtime_minutes)}
           <span className="summary-unit">h</span>
         </div>
+      </div>
+      <div className="summary-card">
+        <div className="summary-label">月間支給見込額</div>
+        <div className="summary-value good">{formatCurrency(summary.total_earnings)}</div>
       </div>
       <div className="summary-card">
         <div className="summary-label">最短インターバル</div>
